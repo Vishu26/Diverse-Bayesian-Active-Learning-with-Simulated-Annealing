@@ -1,6 +1,6 @@
 from data import get_data
 from model import LeNet
-from query import ALSA, ClusterMargin, BADGE, BALD, CoreSet, DBAL, Random, ClusterSampling
+from query import ALSA, ClusterMargin, BADGE, BALD, CoreSet, DBAL, Random, ClusterSampling, UALSA, RandomPoolALSA
 import numpy as np
 
 data = 'mnist'
@@ -28,7 +28,7 @@ active_learner = LeNet()
 labeled_idx, size, acc = [], [], []
 initial_size = 32
 
-if method != 'ALSA':
+if method != 'ALSA' and method != 'UALSA' and method !='RandomPoolALSA':
     idx = np.random.choice(range(len(X_train)), size=initial_size).tolist()
     hist = active_learner.fit(X_train[idx], y_train[idx], epochs=50, batch_size=128, validation_data=(X_test, y_test),verbose=0)
     score = max(hist.history['val_accuracy'])
@@ -78,6 +78,18 @@ elif method == 'ClusterSampling':
     m, k, p = 10, 4, 100
     epochs = 20
     query = ClusterSampling(X_train, m, k, p)
+elif method == 'UALSA':
+    ## Hyperparameters ##
+    alpha = 200
+    beta, e, m, k, p = 5, 0.1, 10, 32, 1
+    epochs = 600
+    query = UALSA(X_train, alpha, beta, e, m, k, p, epochs)
+if method == 'RandomPoolALSA':
+    ## Hyperparameters ##
+    alpha = 200
+    beta, e, m, k, p = 5, 0.1, 10, 32, 32
+    epochs = 600
+    query = RandomPoolALSA(X_train, alpha, beta, e, m, k, p, epochs)
 else:
     raise "Invalid Method"
 

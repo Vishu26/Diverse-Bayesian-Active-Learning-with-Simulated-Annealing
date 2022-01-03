@@ -289,3 +289,118 @@ class ClusterSampling:
             indexes.extend((unlabeled_idx[index[ind.tolist()]]).tolist())
         
         return indexes, epoch+1
+
+class UALSA:
+
+    def __init__(self, X, alpha, beta, e, m, k, p, epochs) -> None:
+        self.alpha = alpha
+        self.beta = beta
+        self.m = m
+        self.k = k
+        self.p = p
+        self.epochs = epochs
+        self.T = np.exp(-np.array(range(epochs))/(epochs)*beta)
+        self.cluster_labels, self.cluster_centers = self.make_clusters(X, m)
+        self.E_m = [e]*k
+    
+    def make_clusters(self, X, m):
+        print(F"KMeans Clustering with {m} clusters")
+        cluster = KMeans(n_clusters=m)
+        cluster.fit(X.reshape(X.shape[0], X.shape[1]*X.shape[2]))
+        X_cluster = cluster.labels_
+        centers = cluster.cluster_centers_ 
+
+        return X_cluster, centers
+
+    def query(self, active_learner, X, labeled_idx, epoch):
+        unlabeled_idx = np.arange(X.shape[0])[np.logical_not(np.in1d(np.arange(X.shape[0]), labeled_idx))]
+        indexes = []
+        b=0
+
+        while b<self.k:
+            T_s = self.T[epoch]
+            for c in range(self.m):
+                index = np.random.choice(np.where(self.cluster_labels[unlabeled_idx]==c)[0], size=self.p)
+
+                for idx in index:
+
+                    prob = np.mean([active_learner(X[unlabeled_idx[idx]].reshape(1, X.shape[1], X.shape[2], 1), training=True) for _ in range(10)], axis=0).flatten()
+                    marg = np.argpartition(prob, -2)[-2:]
+                    U = 1 - abs(prob[marg[0]]-prob[marg[1]])
+
+                    E = U
+
+                    if E  > self.E_m[c]:
+                        self.E_m[c] = E
+                        indexes.append(unlabeled_idx[idx])
+                        b+=1
+
+                    else:
+                        if np.random.uniform() < np.exp(-self.alpha*(self.E_m[c] - E)*T_s):
+                            self.E_m[c] = E
+                            indexes.append(unlabeled_idx[idx])
+                            b+=1
+            epoch+=1
+            if epoch==0 or epoch==self.epochs-1:
+                return indexes, epoch
+        return indexes, epoch
+
+class RandomPoolALSA:
+
+    def __init__(self, X, alpha, beta, e, m, k, p, epochs) -> None:
+        self.alpha = alpha
+        self.beta = beta
+        self.m = m
+        self.k = k
+        self.p = p
+        self.epochs = epochs
+        self.T = np.exp(-np.array(range(epochs))/(epochs)*beta)
+        self.cluster_labels, self.cluster_centers = self.make_clusters(X, m)
+        self.E_m = [e]*k
+    
+    def make_clusters(self, X, m):
+        print(F"KMeans Clustering with {m} clusters")
+        cluster = KMeans(n_clusters=m)
+        cluster.fit(X.reshape(X.shape[0], X.shape[1]*X.shape[2]))
+        X_cluster = cluster.labels_
+        centers = cluster.cluster_centers_ 
+
+        return X_cluster, centers
+
+    def query(self, active_learner, X, labeled_idx, epoch):
+        unlabeled_idx = np.arange(X.shape[0])[np.logical_not(np.in1d(np.arange(X.shape[0]), labeled_idx))]
+        indexes = []
+        b=0
+
+        while b<self.k:
+            T_s = self.T[epoch]
+            for c in range(self.m):
+                index = np.random.choice(unlabeled_idx, size=self.p)
+
+                for idx in index:
+
+                    dist = np.linalg.norm(X[idx].reshape(X.shape[1]*X.shape[2],) - self.cluster_centers[self.cluster_labels[idx]])
+                    div = 1 / (1 + dist)
+                    mi = 1 / (1 + np.sqrt(X.shape[1]*X.shape[2]))
+                    div = (div - mi)/(1 - mi)
+            
+                    prob = np.mean([active_learner(X[idx].reshape(1, X.shape[1], X.shape[2], 1), training=True) for _ in range(10)], axis=0).flatten()
+                    marg = np.argpartition(prob, -2)[-2:]
+                    U = 1 - abs(prob[marg[0]]-prob[marg[1]])
+
+                    E = T_s * div + (1-T_s) * U
+
+                    if E  > self.E_m[c]:
+                        self.E_m[c] = E
+                        indexes.append(idx)
+                        b+=1
+
+                    else:
+                        if np.random.uniform() < np.exp(-self.alpha*(self.E_m[c] - E)*T_s):
+                            self.E_m[c] = E
+                            indexes.append(idx)
+                            b+=1
+            epoch+=1
+            if epoch==0 or epoch==self.epochs-1:
+                return indexes, epoch
+        return indexes, epoch
