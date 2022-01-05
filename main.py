@@ -8,25 +8,27 @@ method = 'ALSA'
 
 if data=='mnist':
     X_train, y_train, X_test, y_test = get_data('mnist')
-    input_shape = (60000, 28, 28)
+    input_shape = (28, 28, 1)
     n_classes = 10
+    initial_size = 32
 
 elif data=='fashion_mnist':
     X_train, y_train, X_test, y_test = get_data('fashion_mnist')
-    input_shape = (60000, 28, 28)
+    input_shape = (28, 28, 1)
     n_classes = 10
+    initial_size = 32
     
 elif data=='cifar':
     X_train, y_train, X_test, y_test = get_data('cifar10')
-    input_shape = (50000, 32, 32)
+    input_shape = (32, 32, 1)
     n_classes = 10
+    initial_size = 1000
 
 else:
     raise "Invalid Dataset"
 
-active_learner = LeNet()
+active_learner = LeNet(input_shape)
 labeled_idx, size, acc = [], [], []
-initial_size = 32
 
 if method != 'ALSA' and method != 'UALSA' and method !='RandomPoolALSA':
     idx = np.random.choice(range(len(X_train)), size=initial_size).tolist()
@@ -84,7 +86,7 @@ elif method == 'UALSA':
     beta, e, m, k, p = 5, 0.1, 10, 32, 1
     epochs = 600
     query = UALSA(X_train, alpha, beta, e, m, k, p, epochs)
-if method == 'RandomPoolALSA':
+elif method == 'RandomPoolALSA':
     ## Hyperparameters ##
     alpha = 200
     beta, e, m, k, p = 5, 0.1, 10, 32, 32
