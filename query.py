@@ -116,9 +116,7 @@ class ClusterMargin:
 
 
 class BADGE:
-    """
-    Code adapted from https://github.com/JordanAsh/badge.
-    """
+
     def __init__(self, k, p):
         self.k=k
         self.p=p
@@ -196,9 +194,7 @@ class BALD:
         return unlabeled_idx[indexes], epoch+1
     
 class CoreSet:
-    """
-    Code adapted from https://github.com/dsgissin/DiscriminativeActiveLearning.
-    """
+    
     def __init__(self, k, p):
         self.k=k
         self.p=p
